@@ -98,7 +98,7 @@ class Parser:
             elif expected == "OPERATOR":
                 if curr.type == NUMBER:
                     raise SmileError("number is not an operator :^(")
-                if ops and paren_count == 0:
+                if ops and ops[-1].type != LPAREN:
                     validate_parse(operands)
                     right, left = operands.pop(), operands.pop()
                     pop_op = ops.pop()
