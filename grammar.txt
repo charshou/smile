@@ -1,0 +1,8 @@
+arithmetic-operator: "add" | "sub" | "mul" | "div"
+logical-operator: "or" | "and"
+operator: arithmetic-operator | logical-operator
+
+expression: term {operator term}
+term: number | identifier 
+
+conditional: expression if expression

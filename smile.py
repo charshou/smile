@@ -170,8 +170,9 @@ class Interpreter:
         validate_operator(operator)
         if operator.name == "bind":
             left, right = self.eval_bind_node(node, env)
+        elif operator.name == "if":
+            left, right = self.eval_if_node(node, env)
         else:
-            operator = env.lookup(self.eval_token(node.val))
             left = self.eval_node(node.left, env)
             right = self.eval_node(node.right, env)
         if isinstance(operator, SpecialOp):
@@ -182,6 +183,13 @@ class Interpreter:
         validate_bind(node)
         left = self.eval_token(node.left.val)
         right = self.eval_node(node.right, env)
+        return left, right
+
+    def eval_if_node(self, node, env):
+        right = self.eval_node(node.right, env)
+        left = 0
+        if right:
+            left = self.eval_node(node.left, env)
         return left, right
 
     def eval_token(self, token):
@@ -306,6 +314,13 @@ def or_op(a, b):
     return int(a or b)
 
 
+@special("if")
+def if_op(a, b, env):  # return a if b else 0
+    if b:
+        return a
+    return 0
+
+
 @special("bind")
 def bind(id, val, env):
     env.define(id, val)
@@ -322,7 +337,7 @@ def validate_parse(operands):
 
 def validate_operator(operator):
     if not isinstance(operator, Operator) and not isinstance(operator, SpecialOp):
-        raise SmileError("not operator :^(")
+        raise SmileError("{} not operator :^(".format(operator))
 
 
 def validate_bind(node):
