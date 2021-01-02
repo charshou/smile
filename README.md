@@ -8,3 +8,4 @@ A basic programming language that uses binary operators to do everything. Curren
 - User defined functions
 - Conditionals
 - Better error handling
+- Other data types

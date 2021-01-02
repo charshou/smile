@@ -83,12 +83,19 @@ class Parser:
             if curr.type == RPAREN:
                 if paren_count <= 0:
                     raise SmileError("misplaced parentheses :^(")
+                is_nil = True
                 while ops[-1].type != LPAREN:
+                    is_nil = False
                     validate_parse(operands)
                     right, left = operands.pop(), operands.pop()
                     pop_op = ops.pop()
                     operands.append(Node(pop_op, left, right))
                 ops.pop()
+                if is_nil:
+                    if expected == "OPERATOR":
+                        raise SmileError("syntax error :^(")
+                    expected = "OPERATOR"
+                    operands.append(Node(Token(NUMBER, "0")))
                 paren_count -= 1
             elif curr.type == LPAREN:
                 ops.append(curr)
@@ -162,9 +169,7 @@ class Interpreter:
         operator = env.lookup(self.eval_token(node.val))
         validate_operator(operator)
         if operator.name == "bind":
-            validate_bind(node)
-            left = self.eval_token(node.left.val)
-            right = self.eval_node(node.right, env)
+            left, right = self.eval_bind_node(node, env)
         else:
             operator = env.lookup(self.eval_token(node.val))
             left = self.eval_node(node.left, env)
@@ -173,8 +178,16 @@ class Interpreter:
             return operator(left, right, env)
         return operator(left, right)
 
+    def eval_bind_node(self, node, env):
+        validate_bind(node)
+        left = self.eval_token(node.left.val)
+        right = self.eval_node(node.right, env)
+        return left, right
+
     def eval_token(self, token):
-        return float(token.val) if token.type == NUMBER else token.val
+        if token.type == NUMBER:  # float or int
+            return float(token.val) if "." in token.val else int(token.val)
+        return token.val
 
 
 # FRAMES
@@ -266,6 +279,31 @@ def div(a, b):
 @builtin("pow")
 def pow(a, b):
     return a ** b
+
+
+@builtin("greater")
+def greater(a, b):
+    return int(a > b)
+
+
+@builtin("lesser")
+def lesser(a, b):
+    return int(a < b)
+
+
+@builtin("equal")
+def equal(a, b):
+    return int(a == b)
+
+
+@builtin("and")
+def and_op(a, b):
+    return int(a and b)
+
+
+@builtin("or")
+def or_op(a, b):
+    return int(a or b)
 
 
 @special("bind")
