@@ -3,6 +3,8 @@ logical-operator: "or" | "and"
 operator: arithmetic-operator | logical-operator
 
 expression: term {operator term}
-term: number | identifier 
+term: number | identifier | string
+
 
 conditional: expression if expression
+list: expression {link list}

@@ -1,5 +1,6 @@
 # TYPES
 NUMBER = "NUMBER"
+STRING = "STRING"
 SYMBOL = "SYMBOL"
 LPAREN = "LPAREN"
 RPAREN = "RPAREN"
@@ -29,6 +30,8 @@ class Lexer:
             curr = self.text[self.pos]
             if curr == " ":
                 self.pos += 1
+            elif curr in '"':
+                tokens.append(Token(STRING, self.make_string()))
             elif curr in numbers:
                 tokens.append(Token(NUMBER, self.make_number()))
             elif curr == "(":
@@ -64,6 +67,17 @@ class Lexer:
             num += curr
             self.pos += 1
         return num
+
+    def make_string(self):
+        string = '"'
+        self.pos += 1
+        if not '"' in self.text[self.pos :]:
+            raise SmileError('cannot find " :^(')
+        while self.pos < len(self.text) and self.text[self.pos] != '"':
+            string += self.text[self.pos]
+            self.pos += 1
+        self.pos += 1
+        return string + '"'
 
 
 # PARSER
@@ -226,6 +240,9 @@ class Frame:
         raise SmileError("unknown identifier :^(")
 
 
+# OPERATORS
+
+
 class Operator:
     def __init__(self, name, func):
         self.name = name
@@ -240,7 +257,43 @@ class SpecialOp(Operator):
         return self.func(args[0], args[1], args[2])  # pass in frame
 
 
+class UserDefinedOp(
+    SpecialOp
+):  # bind parameters to local frame and eval node passed as func
+    def __call__(self, *args):
+        pass
+
+
+# LISTS/LINK
+
+
+class Link:
+    empty = None
+
+    def __init__(self, val, prev=empty):  # reverse linked list
+        if isinstance(prev, Link):
+            self.prev = prev
+        elif prev is Link.empty:
+            self.prev = Link.empty
+        else:
+            self.prev = Link(prev)
+        self.val = val
+
+    def __repr__(self):
+        string = ")"
+        while not self.prev is Link.empty:
+            string = " " + str(self.val) + string
+            self = self.prev
+        return "(" + str(self.val) + string
+
+    def __len__(self):
+        if self.prev is Link.empty:
+            return 1
+        return 1 + len(self.prev)
+
+
 # BUILTINS
+
 
 builtins = []
 specials = []
@@ -262,23 +315,38 @@ def special(name):
     return add
 
 
+@builtin("cat")
+def cat(a, b):
+    if not isinstance(a, str) or not isinstance(b, str):
+        raise SmileError("cat only supports strs :^(")
+    return a + b
+
+
 @builtin("add")
 def add(a, b):
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise SmileError("add only supports ints :^(")
     return a + b
 
 
 @builtin("sub")
 def sub(a, b):
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise SmileError("sub only supports ints :^(")
     return a - b
 
 
 @builtin("mul")
 def mul(a, b):
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise SmileError("mul only supports ints :^(")
     return a * b
 
 
 @builtin("div")
 def div(a, b):
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise SmileError("div only supports ints :^(")
     if b == 0:
         raise SmileError("zero division error :^(")
     return a / b
@@ -286,6 +354,8 @@ def div(a, b):
 
 @builtin("pow")
 def pow(a, b):
+    if not isinstance(a, int) or not isinstance(b, int):
+        raise SmileError("pow only supports ints :^(")
     return a ** b
 
 
@@ -325,6 +395,17 @@ def if_op(a, b, env):  # return a if b else 0
 def bind(id, val, env):
     env.define(id, val)
     return val
+
+
+@special("link")
+def link(prev, val, env):
+    return Link(val, prev)
+
+
+@special("lambda")
+def lambda_op(operands, body):
+    # TODO
+    pass
 
 
 # ERRORS
