@@ -1,10 +1,12 @@
-arithmetic-operator: "add" | "sub" | "mul" | "div"
+arithmetic-operator: "add" | "sub" | "mul" | "div" | "pow"
+comparator: "greater" | "lesser" | "equal"
 logical-operator: "or" | "and"
-operator: arithmetic-operator | logical-operator
+operator: arithmetic-operator | logical-operator | user-defined-function | comparator
 
 expression: term {operator term}
 term: number | identifier | string
 
+conditional: expression "if" expression
+list: expression {"link" list}
 
-conditional: expression if expression
-list: expression {link list}
+user-defined-function: list "lambda" expression

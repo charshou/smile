@@ -69,7 +69,7 @@ class Lexer:
         return num
 
     def make_string(self):
-        string = '"'
+        string = ""
         self.pos += 1
         if not '"' in self.text[self.pos :]:
             raise SmileError('cannot find " :^(')
@@ -77,7 +77,7 @@ class Lexer:
             string += self.text[self.pos]
             self.pos += 1
         self.pos += 1
-        return string + '"'
+        return string
 
 
 # PARSER
@@ -175,7 +175,6 @@ class Interpreter:
         if node is None:
             return
         elif node.is_leaf():
-            # TODO lookup variable names
             if node.val.type == SYMBOL:
                 return env.lookup(self.eval_token(node.val))
             return self.eval_token(node.val)
@@ -186,10 +185,12 @@ class Interpreter:
             left, right = self.eval_bind_node(node, env)
         elif operator.name == "if":
             left, right = self.eval_if_node(node, env)
+        elif operator.name == "lambda":
+            left, right = self.eval_lambda_node(node, env)
         else:
             left = self.eval_node(node.left, env)
             right = self.eval_node(node.right, env)
-        if isinstance(operator, SpecialOp):
+        if issubclass(type(operator), SpecialOp):
             return operator(left, right, env)
         return operator(left, right)
 
@@ -204,6 +205,23 @@ class Interpreter:
         left = 0
         if right:
             left = self.eval_node(node.left, env)
+        return left, right
+
+    def eval_lambda_node(self, node, env):  # TODO make clearer
+        left_op = env.lookup(self.eval_token(node.left.val))
+        validate_operator(left_op)
+        if not left_op.name == "link":
+            raise SmileError("left side not list :^(")
+        left_node, right_node = node.left.left, node.left.right
+        if not (
+            left_node.is_leaf()
+            and right_node.is_leaf()
+            and left_node.val.type == SYMBOL
+            and right_node.val.type == SYMBOL
+        ):
+            raise SmileError("bad parameters in lambda :^(")
+        left = Link(self.eval_token(right_node.val), self.eval_token(left_node.val))
+        right = node.right
         return left, right
 
     def eval_token(self, token):
@@ -260,8 +278,16 @@ class SpecialOp(Operator):
 class UserDefinedOp(
     SpecialOp
 ):  # bind parameters to local frame and eval node passed as func
-    def __call__(self, *args):
-        pass
+    def __init__(self, name, func, params):  # params is list
+        self.params = [params.get(0), params.get(1)]
+        SpecialOp.__init__(self, name, func)
+
+    def __call__(self, *args):  # func is a node
+        env = args[2]
+        env.define(self.params[0], args[0])
+        env.define(self.params[1], args[1])
+        temp = Interpreter()
+        return temp.eval_node(self.func, env)
 
 
 # LISTS/LINK
@@ -278,6 +304,15 @@ class Link:
         else:
             self.prev = Link(prev)
         self.val = val
+
+    def get(self, i):
+        if i >= len(self):
+            return None
+        index = len(self) - 1 - i
+        while index > 0:
+            self = self.prev
+            index -= 1
+        return self.val
 
     def __repr__(self):
         string = ")"
@@ -324,28 +359,28 @@ def cat(a, b):
 
 @builtin("add")
 def add(a, b):
-    if not isinstance(a, int) or not isinstance(b, int):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise SmileError("add only supports ints :^(")
     return a + b
 
 
 @builtin("sub")
 def sub(a, b):
-    if not isinstance(a, int) or not isinstance(b, int):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise SmileError("sub only supports ints :^(")
     return a - b
 
 
 @builtin("mul")
 def mul(a, b):
-    if not isinstance(a, int) or not isinstance(b, int):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise SmileError("mul only supports ints :^(")
     return a * b
 
 
 @builtin("div")
 def div(a, b):
-    if not isinstance(a, int) or not isinstance(b, int):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise SmileError("div only supports ints :^(")
     if b == 0:
         raise SmileError("zero division error :^(")
@@ -354,7 +389,7 @@ def div(a, b):
 
 @builtin("pow")
 def pow(a, b):
-    if not isinstance(a, int) or not isinstance(b, int):
+    if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
         raise SmileError("pow only supports ints :^(")
     return a ** b
 
@@ -403,9 +438,8 @@ def link(prev, val, env):
 
 
 @special("lambda")
-def lambda_op(operands, body):
-    # TODO
-    pass
+def lambda_op(operands, body, env):
+    return UserDefinedOp("u_lambda", body, operands)
 
 
 # ERRORS
