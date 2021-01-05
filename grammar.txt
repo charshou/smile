@@ -9,4 +9,5 @@ term: number | identifier | string
 conditional: expression "if" expression
 list: expression {"link" list}
 
-user-defined-function: list "lambda" expression
+user-defined-function: list "function" expression
+variable: identifier "bind" expression

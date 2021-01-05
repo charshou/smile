@@ -185,8 +185,8 @@ class Interpreter:
             left, right = self.eval_bind_node(node, env)
         elif operator.name == "if":
             left, right = self.eval_if_node(node, env)
-        elif operator.name == "lambda":
-            left, right = self.eval_lambda_node(node, env)
+        elif operator.name == "function":
+            left, right = self.eval_function_node(node, env)
         else:
             left = self.eval_node(node.left, env)
             right = self.eval_node(node.right, env)
@@ -207,7 +207,7 @@ class Interpreter:
             left = self.eval_node(node.left, env)
         return left, right
 
-    def eval_lambda_node(self, node, env):  # TODO make clearer
+    def eval_function_node(self, node, env):  # TODO make clearer
         left_op = env.lookup(self.eval_token(node.left.val))
         validate_operator(left_op)
         if not left_op.name == "link":
@@ -219,7 +219,7 @@ class Interpreter:
             and left_node.val.type == SYMBOL
             and right_node.val.type == SYMBOL
         ):
-            raise SmileError("bad parameters in lambda :^(")
+            raise SmileError("bad parameters in function :^(")
         left = Link(self.eval_token(right_node.val), self.eval_token(left_node.val))
         right = node.right
         return left, right
@@ -437,9 +437,11 @@ def link(prev, val, env):
     return Link(val, prev)
 
 
-@special("lambda")
-def lambda_op(operands, body, env):
-    return UserDefinedOp("u_lambda", body, operands)
+@special("function")
+def function_op(
+    operands, body, env
+):  # TODO fix parsing issue and catch recursion error
+    return UserDefinedOp("u_function", body, operands)
 
 
 # ERRORS
