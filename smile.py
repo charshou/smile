@@ -286,12 +286,11 @@ class UserDefinedOp(
 
     def __call__(self, *args):  # func is a node
         env = args[2]
-        env.define(self.params[0], args[0])
-        env.define(self.params[1], args[1])
+        child = Frame(env)
+        child.define(self.params[0], args[0])
+        child.define(self.params[1], args[1])
         temp = Interpreter()
-        return temp.eval_node(
-            self.func, env
-        )  # TODO add as child frame (try b bind ((a link b) function (a add b)))
+        return temp.eval_node(self.func, child)
 
 
 # LISTS/LINK
