@@ -289,7 +289,9 @@ class UserDefinedOp(
         env.define(self.params[0], args[0])
         env.define(self.params[1], args[1])
         temp = Interpreter()
-        return temp.eval_node(self.func, env)
+        return temp.eval_node(
+            self.func, env
+        )  # TODO add as child frame (try b bind ((a link b) function (a add b)))
 
 
 # LISTS/LINK
@@ -421,7 +423,7 @@ def or_op(a, b):
     return int(a or b)
 
 
-@special("if")  #TODO add else condition with links
+@special("if")  # TODO add else condition with links
 def if_op(a, b, env):  # return a if b else 0
     if b:
         return a
