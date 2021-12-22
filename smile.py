@@ -141,7 +141,23 @@ class Parser:
             raise SmileError("syntax error :^(")
         return operands[0] if len(operands) == 1 else None
 
+    def new_parser(self): # work in progress
+        # just get left mid and right nodes with nextnode
+        left, middle, right = next_node(), next_node(), next_node()
+        return Node(middle.val, left, right)
 
+    def next_node(self):
+        if not self.pos < len(self.tokens):
+            raise SmileError("no more tokens :^(")
+        curr = self.tokens[self.pos]
+        if curr.type == RPAREN:
+            raise SmileError("invalid token :^(")
+        elif curr.type == LPAREN:
+            pass #todo
+        else:
+            pass #todo
+            
+        
 class Node:
     def __init__(self, val, left=None, right=None):
         if type(left) != type(right):  # left, right both either None or Node
