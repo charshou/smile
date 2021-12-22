@@ -8,9 +8,13 @@ def run(text):
         lexer = Lexer(text)
         tokens = lexer.create_tokens()
         parser = Parser(tokens)
-        tree = parser.parse()
-        interpreter = Interpreter()
-        print(interpreter.eval_node(tree, global_frame))
+        parser2 = Parser(tokens)
+        tree = parser.new_parse()
+        print(tree)
+        tree2 = parser2.parse()
+        print(tree2)
+        """ interpreter = Interpreter()
+        print(interpreter.eval_node(tree, global_frame)) """
     except SmileError as e:
         print(e)
 

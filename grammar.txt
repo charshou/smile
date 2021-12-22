@@ -7,7 +7,6 @@ expression: term {operator term}
 term: number | identifier | string
 
 conditional: expression "if" expression
-list: expression {"link" list}
 
 user-defined-function: list "function" expression
 variable: identifier "bind" expression

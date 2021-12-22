@@ -4,11 +4,9 @@ STRING = "STRING"
 SYMBOL = "SYMBOL"
 LPAREN = "LPAREN"
 RPAREN = "RPAREN"
+UNRESOLVED = "UNRESOLVED"
 
 numbers = "1234567890"
-
-# LEXER
-
 
 class Token:
     def __init__(self, ty, val):
@@ -17,7 +15,28 @@ class Token:
 
     def __repr__(self):
         return "{type} - {val}".format(type=self.type, val=self.val)
+    
+class Node:
+    def __init__(self, val, left=None, right=None):
+        if type(left) != type(right):  # left, right both either None or Node
+            raise SmileError("malformed nodes :^(")
+        self.left = left
+        self.right = right
+        self.val = val
 
+    def is_leaf(self):
+        return self.left is None and self.right is None
+
+    def __repr__(self):
+        return (
+            "({left} << {val} >> {right})".format(
+                left=self.left, val=self.val, right=self.right
+            )
+            if self.left
+            else "({val})".format(val=self.val)
+        )
+
+# LEXER
 
 class Lexer:
     def __init__(self, text):
@@ -141,42 +160,52 @@ class Parser:
             raise SmileError("syntax error :^(")
         return operands[0] if len(operands) == 1 else None
 
-    def new_parser(self): # work in progress
+    def new_parse(self) -> Node: # work in progress
         # just get left mid and right nodes with nextnode
-        left, middle, right = next_node(), next_node(), next_node()
-        return Node(middle.val, left, right)
+        root = self.next_node()
+        while self.pos < len(self.tokens): # more tokens
+            operator, second = self.next_operator(), self.next_node()
+            root = Node(operator, root, second)
+        return root
+        
 
-    def next_node(self):
+    def next_node(self) -> Node:
         if not self.pos < len(self.tokens):
+            print(123)
             raise SmileError("no more tokens :^(")
         curr = self.tokens[self.pos]
         if curr.type == RPAREN:
             raise SmileError("invalid token :^(")
         elif curr.type == LPAREN:
-            pass #todo
+            self.pos += 1
+            parens = 1
+            sub_tokens = []
+            while parens > 0 and self.pos < len(self.tokens):
+                next_token = self.tokens[self.pos]
+                if next_token.type == RPAREN:
+                    parens -= 1
+                elif next_token.type == LPAREN:
+                    parens += 1
+                sub_tokens.append(next_token)
+                self.pos += 1
+            if parens == 0:
+                sub_parser = Parser(sub_tokens[:-1]) # everything but last extra rparen
+                return sub_parser.new_parse()
+            raise SmileError("missing parens :^(")
         else:
-            pass #todo
-            
-        
-class Node:
-    def __init__(self, val, left=None, right=None):
-        if type(left) != type(right):  # left, right both either None or Node
-            raise SmileError("malformed nodes :^(")
-        self.left = left
-        self.right = right
-        self.val = val
-
-    def is_leaf(self):
-        return self.left is None and self.right is None
-
-    def __repr__(self):
-        return (
-            "({left} << {val} >> {right})".format(
-                left=self.left, val=self.val, right=self.right
-            )
-            if self.left
-            else "({val})".format(val=self.val)
-        )
+            self.pos += 1
+            return Node(curr)
+    
+    def next_operator(self) -> Token:
+        if not self.pos < len(self.tokens):
+            raise SmileError("no more tokens :^(")
+        curr = self.tokens[self.pos]
+        if not curr.type == RPAREN and not curr.type == LPAREN: # yay simple token
+            self.pos += 1
+            return curr
+        else: # not simple token (node)
+            operator_node = self.next_node()
+            return Token(UNRESOLVED, operator_node) # hope it resolves to a valid operator
 
 
 # INTERPRETER
@@ -452,7 +481,7 @@ def bind(id, val, env):
 
 
 @special("link")
-def link(prev, val, env):
+def link(prev, val, env): # repurpose into expression linker
     return Link(val, prev)
 
 
@@ -464,7 +493,7 @@ def function_op(
 
 
 @special("get")
-def get(lst, index, env):  # TODO add get from list
+def get(lst, index, env):  # TODO get ith evaluation in list
     pass
 
 
