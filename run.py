@@ -1,21 +1,21 @@
-from smile import *
+import smile
 
-global_frame = create_global_frame()
+global_frame = smile.create_global_frame()
 
 
 def run(text):
     try:
-        lexer = Lexer(text)
+        lexer = smile.Lexer(text)
         tokens = lexer.create_tokens()
-        parser = Parser(tokens)
-        parser2 = Parser(tokens)
+        parser = smile.Parser(tokens)
+        parser2 = smile.Parser(tokens)
         tree = parser.new_parse()
         print(tree)
         tree2 = parser2.parse()
         print(tree2)
-        """ interpreter = Interpreter()
-        print(interpreter.eval_node(tree, global_frame)) """
-    except SmileError as e:
+        interpreter = smile.Interpreter()
+        print(interpreter.eval_node(tree, global_frame))
+    except smile.SmileError as e:
         print(e)
 
 

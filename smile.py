@@ -1,40 +1,6 @@
-# TYPES
-NUMBER = "NUMBER"
-STRING = "STRING"
-SYMBOL = "SYMBOL"
-LPAREN = "LPAREN"
-RPAREN = "RPAREN"
-UNRESOLVED = "UNRESOLVED"
-
-numbers = "1234567890"
-
-class Token:
-    def __init__(self, ty, val):
-        self.type = ty
-        self.val = val
-
-    def __repr__(self):
-        return "{type} - {val}".format(type=self.type, val=self.val)
-    
-class Node:
-    def __init__(self, val, left=None, right=None):
-        if type(left) != type(right):  # left, right both either None or Node
-            raise SmileError("malformed nodes :^(")
-        self.left = left
-        self.right = right
-        self.val = val
-
-    def is_leaf(self):
-        return self.left is None and self.right is None
-
-    def __repr__(self):
-        return (
-            "({left} << {val} >> {right})".format(
-                left=self.left, val=self.val, right=self.right
-            )
-            if self.left
-            else "({val})".format(val=self.val)
-        )
+from constants import *
+from reader_objects import Node, Token
+from objects import Link
 
 # LEXER
 
@@ -80,10 +46,10 @@ class Lexer:
         while self.pos < len(self.text) and not self.text[self.pos] in " ()":
             curr = self.text[self.pos]
             if not curr in numbers + ".":
-                raise SmileError("bad number :^(")
+                raise SmileError("bad number")
             elif curr == ".":
                 if deci:
-                    raise SmileError("too many dots :^(")
+                    raise SmileError("too many dots")
                 deci = True
             num += curr
             self.pos += 1
@@ -93,7 +59,7 @@ class Lexer:
         string = ""
         self.pos += 1
         if not '"' in self.text[self.pos :]:
-            raise SmileError('cannot find " :^(')
+            raise SmileError('cannot find "')
         while self.pos < len(self.text) and self.text[self.pos] != '"':
             string += self.text[self.pos]
             self.pos += 1
@@ -117,7 +83,7 @@ class Parser:
             curr = self.tokens[self.pos]
             if curr.type == RPAREN:
                 if paren_count <= 0:
-                    raise SmileError("misplaced parentheses :^(")
+                    raise SmileError("misplaced parentheses")
                 is_nil = True
                 while ops[-1].type != LPAREN:
                     is_nil = False
@@ -128,7 +94,7 @@ class Parser:
                 ops.pop()
                 if is_nil:
                     if expected == "OPERATOR":
-                        raise SmileError("syntax error :^(")
+                        raise SmileError("syntax error")
                     expected = "OPERATOR"
                     operands.append(Node(Token(NUMBER, "0")))
                 paren_count -= 1
@@ -139,7 +105,7 @@ class Parser:
                 operands.append(Node(curr))
             elif expected == "OPERATOR":
                 if curr.type == NUMBER:
-                    raise SmileError("number is not an operator :^(")
+                    raise SmileError("number is not an operator")
                 if ops and ops[-1].type != LPAREN:
                     validate_parse(operands)
                     right, left = operands.pop(), operands.pop()
@@ -150,14 +116,14 @@ class Parser:
                 expected = "OPERAND" if expected == "OPERATOR" else "OPERATOR"
             self.pos += 1
         if paren_count != 0:
-            raise SmileError("misplaced parentheses :^(")
+            raise SmileError("misplaced parentheses")
         if ops:
             validate_parse(operands)
             right, left = operands.pop(), operands.pop()
             pop_op = ops.pop()
             operands.append(Node(pop_op, left, right))
         if len(operands) > 1:
-            raise SmileError("syntax error :^(")
+            raise SmileError("syntax error")
         return operands[0] if len(operands) == 1 else None
 
     def new_parse(self) -> Node: # work in progress
@@ -172,10 +138,10 @@ class Parser:
     def next_node(self) -> Node:
         if not self.pos < len(self.tokens):
             print(123)
-            raise SmileError("no more tokens :^(")
+            raise SmileError("no more tokens")
         curr = self.tokens[self.pos]
         if curr.type == RPAREN:
-            raise SmileError("invalid token :^(")
+            raise SmileError("invalid token")
         elif curr.type == LPAREN:
             self.pos += 1
             parens = 1
@@ -191,14 +157,14 @@ class Parser:
             if parens == 0:
                 sub_parser = Parser(sub_tokens[:-1]) # everything but last extra rparen
                 return sub_parser.new_parse()
-            raise SmileError("missing parens :^(")
+            raise SmileError("missing parens")
         else:
             self.pos += 1
             return Node(curr)
     
     def next_operator(self) -> Token:
         if not self.pos < len(self.tokens):
-            raise SmileError("no more tokens :^(")
+            raise SmileError("no more tokens")
         curr = self.tokens[self.pos]
         if not curr.type == RPAREN and not curr.type == LPAREN: # yay simple token
             self.pos += 1
@@ -226,7 +192,12 @@ class Interpreter:
                 return env.lookup(self.eval_token(node.val))
             return self.eval_token(node.val)
 
-        operator = env.lookup(self.eval_token(node.val))
+        if self.eval_token_type(node.val) == SYMBOL:
+            operator = env.lookup(self.eval_token(node.val))
+        elif self.eval_token_type(node.val) == UNRESOLVED:
+            operator = self.eval_node(node.val, env)
+        else:
+            raise SmileError(f"{self.eval_token_type(node.val)} can not be evaluated to a function")
         validate_operator(operator)
         if operator.name == "bind":
             left, right = self.eval_bind_node(node, env)
@@ -258,7 +229,7 @@ class Interpreter:
         left_op = env.lookup(self.eval_token(node.left.val))
         validate_operator(left_op)
         if not left_op.name == "link":
-            raise SmileError("left side not list :^(")
+            raise SmileError("left side not list")
         left_node, right_node = node.left.left, node.left.right
         if not (
             left_node.is_leaf()
@@ -266,7 +237,7 @@ class Interpreter:
             and left_node.val.type == SYMBOL
             and right_node.val.type == SYMBOL
         ):
-            raise SmileError("bad parameters in function :^(")
+            raise SmileError("bad parameters in function")
         left = Link(self.eval_token(right_node.val), self.eval_token(left_node.val))
         right = node.right
         return left, right
@@ -275,6 +246,9 @@ class Interpreter:
         if token.type == NUMBER:  # float or int
             return float(token.val) if "." in token.val else int(token.val)
         return token.val
+    
+    def eval_token_type(self, token):
+        return token.type
 
 
 # FRAMES
@@ -302,11 +276,9 @@ class Frame:
             return self.bindings[id]
         elif not self.parent is None:
             return self.parent.lookup(id)
-        raise SmileError("unknown identifier :^(")
-
+        raise SmileError("unknown identifier")
 
 # OPERATORS
-
 
 class Operator:
     def __init__(self, name, func):
@@ -325,7 +297,7 @@ class SpecialOp(Operator):
 class UserDefinedOp(
     SpecialOp
 ):  # bind parameters to local frame and eval node passed as func
-    def __init__(self, name, func, params):  # params is list
+    def __init__(self, name: str, func, params):  # params is list
         self.params = [params.get(0), params.get(1)]
         SpecialOp.__init__(self, name, func)
 
@@ -336,43 +308,6 @@ class UserDefinedOp(
         child.define(self.params[1], args[1])
         temp = Interpreter()
         return temp.eval_node(self.func, child)
-
-
-# LISTS/LINK
-
-
-class Link:
-    empty = None
-
-    def __init__(self, val, prev=empty):  # reverse linked list
-        if isinstance(prev, Link):
-            self.prev = prev
-        elif prev is Link.empty:
-            self.prev = Link.empty
-        else:
-            self.prev = Link(prev)
-        self.val = val
-
-    def get(self, i):
-        if i >= len(self):
-            return None
-        index = len(self) - 1 - i
-        while index > 0:
-            self = self.prev
-            index -= 1
-        return self.val
-
-    def __repr__(self):
-        string = ")"
-        while not self.prev is Link.empty:
-            string = " " + str(self.val) + string
-            self = self.prev
-        return "(" + str(self.val) + string
-
-    def __len__(self):
-        if self.prev is Link.empty:
-            return 1
-        return 1 + len(self.prev)
 
 
 # BUILTINS
@@ -401,44 +336,44 @@ def special(name):
 @builtin("cat")
 def cat(a, b):
     if not isinstance(a, str) or not isinstance(b, str):
-        raise SmileError("cat only supports strs :^(")
+        raise SmileError("cat only supports strs")
     return a + b
 
 
 @builtin("add")
 def add(a, b):
     if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-        raise SmileError("add only supports ints :^(")
+        raise SmileError("add only supports ints")
     return a + b
 
 
 @builtin("sub")
 def sub(a, b):
     if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-        raise SmileError("sub only supports ints :^(")
+        raise SmileError("sub only supports ints")
     return a - b
 
 
 @builtin("mul")
 def mul(a, b):
     if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-        raise SmileError("mul only supports ints :^(")
+        raise SmileError("mul only supports ints")
     return a * b
 
 
 @builtin("div")
 def div(a, b):
     if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-        raise SmileError("div only supports ints :^(")
+        raise SmileError("div only supports ints")
     if b == 0:
-        raise SmileError("zero division error :^(")
+        raise SmileError("zero division error")
     return a / b
 
 
 @builtin("pow")
 def pow(a, b):
     if not isinstance(a, (int, float)) or not isinstance(b, (int, float)):
-        raise SmileError("pow only supports ints :^(")
+        raise SmileError("pow only supports ints")
     return a ** b
 
 
@@ -496,24 +431,25 @@ def function_op(
 def get(lst, index, env):  # TODO get ith evaluation in list
     pass
 
-
-# ERRORS
-
+# VALIDATORS
 
 def validate_parse(operands):
     if len(operands) < 2:
-        raise SmileError("few operands :^(")
+        raise SmileError("few operands")
 
 
 def validate_operator(operator):
     if not isinstance(operator, Operator) and not isinstance(operator, SpecialOp):
-        raise SmileError("{} not operator :^(".format(operator))
+        raise SmileError("{} not operator".format(operator))
 
 
 def validate_bind(node):
     if not node.left.is_leaf() or node.left.val.type != SYMBOL:
-        raise SmileError("wrong bind :^(")
+        raise SmileError("wrong bind")
 
 
 class SmileError(Exception):
-    pass
+    
+    def __init__(self, message):
+        super(SmileError, self).__init__(f"{message} :^(")
+        self.message = message
