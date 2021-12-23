@@ -8,11 +8,8 @@ def run(text):
         lexer = smile.Lexer(text)
         tokens = lexer.create_tokens()
         parser = smile.Parser(tokens)
-        parser2 = smile.Parser(tokens)
-        tree = parser.new_parse()
+        tree = parser.parse()
         print(tree)
-        tree2 = parser2.parse()
-        print(tree2)
         interpreter = smile.Interpreter()
         print(interpreter.eval_node(tree, global_frame))
     except smile.SmileError as e:

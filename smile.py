@@ -75,58 +75,7 @@ class Parser:
         self.tokens = tokens
         self.pos = 0
 
-    def parse(self):  # TODO make better
-        operands, ops = [], []
-        paren_count = 0
-        expected = "OPERAND"  # operand or operator
-        while self.pos < len(self.tokens):
-            curr = self.tokens[self.pos]
-            if curr.type == RPAREN:
-                if paren_count <= 0:
-                    raise SmileError("misplaced parentheses")
-                is_nil = True
-                while ops[-1].type != LPAREN:
-                    is_nil = False
-                    validate_parse(operands)
-                    right, left = operands.pop(), operands.pop()
-                    pop_op = ops.pop()
-                    operands.append(Node(pop_op, left, right))
-                ops.pop()
-                if is_nil:
-                    if expected == "OPERATOR":
-                        raise SmileError("syntax error")
-                    expected = "OPERATOR"
-                    operands.append(Node(Token(NUMBER, "0")))
-                paren_count -= 1
-            elif curr.type == LPAREN:
-                ops.append(curr)
-                paren_count += 1
-            elif expected == "OPERAND":
-                operands.append(Node(curr))
-            elif expected == "OPERATOR":
-                if curr.type == NUMBER:
-                    raise SmileError("number is not an operator")
-                if ops and ops[-1].type != LPAREN:
-                    validate_parse(operands)
-                    right, left = operands.pop(), operands.pop()
-                    pop_op = ops.pop()
-                    operands.append(Node(pop_op, left, right))
-                ops.append(curr)
-            if not curr.type in [LPAREN, RPAREN]:
-                expected = "OPERAND" if expected == "OPERATOR" else "OPERATOR"
-            self.pos += 1
-        if paren_count != 0:
-            raise SmileError("misplaced parentheses")
-        if ops:
-            validate_parse(operands)
-            right, left = operands.pop(), operands.pop()
-            pop_op = ops.pop()
-            operands.append(Node(pop_op, left, right))
-        if len(operands) > 1:
-            raise SmileError("syntax error")
-        return operands[0] if len(operands) == 1 else None
-
-    def new_parse(self) -> Node: # work in progress
+    def parse(self) -> Node: # work in progress
         # just get left mid and right nodes with nextnode
         root = self.next_node()
         while self.pos < len(self.tokens): # more tokens
@@ -137,7 +86,6 @@ class Parser:
 
     def next_node(self) -> Node:
         if not self.pos < len(self.tokens):
-            print(123)
             raise SmileError("no more tokens")
         curr = self.tokens[self.pos]
         if curr.type == RPAREN:
@@ -156,7 +104,7 @@ class Parser:
                 self.pos += 1
             if parens == 0:
                 sub_parser = Parser(sub_tokens[:-1]) # everything but last extra rparen
-                return sub_parser.new_parse()
+                return sub_parser.parse()
             raise SmileError("missing parens")
         else:
             self.pos += 1
@@ -195,9 +143,10 @@ class Interpreter:
         if self.eval_token_type(node.val) == SYMBOL:
             operator = env.lookup(self.eval_token(node.val))
         elif self.eval_token_type(node.val) == UNRESOLVED:
-            operator = self.eval_node(node.val, env)
+            operator = self.eval_node(self.eval_token(node.val), env)
         else:
             raise SmileError(f"{self.eval_token_type(node.val)} can not be evaluated to a function")
+        
         validate_operator(operator)
         if operator.name == "bind":
             left, right = self.eval_bind_node(node, env)
@@ -402,11 +351,23 @@ def or_op(a, b):
     return int(a or b)
 
 
-@special("if")  # TODO add else condition with links
-def if_op(a, b, env):  # return a if b else 0
+@builtin("if")  # TODO add else condition with links
+def if_op(a, b):  # return a if b else 0
     if b:
         return a
     return 0
+
+
+@builtin("link")
+def link(prev, val): # repurpose into expression linker
+    return Link(val, prev)
+
+
+@builtin("function")
+def function_op(
+    operands, body
+):  # TODO fix parsing issue and catch recursion error
+    return UserDefinedOp("u_function", body, operands)
 
 
 @special("bind")
@@ -414,22 +375,6 @@ def bind(id, val, env):
     env.define(id, val)
     return val
 
-
-@special("link")
-def link(prev, val, env): # repurpose into expression linker
-    return Link(val, prev)
-
-
-@special("function")
-def function_op(
-    operands, body, env
-):  # TODO fix parsing issue and catch recursion error
-    return UserDefinedOp("u_function", body, operands)
-
-
-@special("get")
-def get(lst, index, env):  # TODO get ith evaluation in list
-    pass
 
 # VALIDATORS
 
