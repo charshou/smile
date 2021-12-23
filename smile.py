@@ -13,7 +13,7 @@ class Lexer:
         tokens = []
         while self.pos < len(self.text):
             curr = self.text[self.pos]
-            if curr == " ":
+            if curr in " \t\n":
                 self.pos += 1
             elif curr in '"':
                 tokens.append(Token(STRING, self.make_string()))
@@ -32,7 +32,7 @@ class Lexer:
 
     def make_symbol(self):
         sym = ""
-        while self.pos < len(self.text) and not self.text[self.pos] in " ()":
+        while self.pos < len(self.text) and not self.text[self.pos] in " ()\t\n":
             curr = self.text[self.pos]
             sym += curr
             self.pos += 1
@@ -41,7 +41,7 @@ class Lexer:
     def make_number(self):
         num = ""
         deci = False
-        while self.pos < len(self.text) and not self.text[self.pos] in " ()":
+        while self.pos < len(self.text) and not self.text[self.pos] in " ()\t\n":
             curr = self.text[self.pos]
             if not curr in numbers + ".":
                 raise SmileError("bad number")
@@ -395,4 +395,4 @@ class SmileError(Exception):
     
     def __init__(self, message):
         super(SmileError, self).__init__(f"{message} :^(")
-        self.message = message
+        self.message = f"{message} :^("
