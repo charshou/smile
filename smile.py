@@ -25,8 +25,6 @@ class Lexer:
             elif curr == ")":
                 tokens.append(Token(RPAREN, ")"))
                 self.pos += 1
-            elif curr == ";":  # TODO add multiline
-                pass
             else:
                 sym = self.make_symbol()
                 tokens.append(Token(SYMBOL, sym))
@@ -351,7 +349,7 @@ def or_op(a, b):
     return int(a or b)
 
 
-@builtin("if")  # TODO add else condition with links
+@builtin("if") 
 def if_op(a, b):  # return a if b else 0
     if b:
         return a
