@@ -9,4 +9,5 @@ term: number | identifier | string
 conditional: expression "if" expression
 
 user-defined-function: list "function" expression
+    *returns list of evaluations if expressions are linked
 variable: identifier "bind" expression

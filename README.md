@@ -6,7 +6,6 @@ See tests for example code
 
 ## In Progress:
 
-- Loops
 - Clean up code
 - Better error handling
 - Other data types

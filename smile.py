@@ -146,7 +146,7 @@ class Interpreter:
             raise SmileError(f"{self.eval_token_type(node.val)} can not be evaluated to a function")
         
         validate_operator(operator)
-        if operator.name == "bind":
+        if operator.name == "bind" or operator.name == "eval":
             left, right = self.eval_bind_node(node, env)
         elif operator.name == "if":
             left, right = self.eval_if_node(node, env)
@@ -357,9 +357,15 @@ def if_op(a, b):  # return a if b else 0
 
 
 @builtin("link")
-def link(prev, val): # repurpose into expression linker
+def link(prev, val):
     return Link(val, prev)
 
+@builtin("get")
+def get(link, index): # get value at index of link
+    if not isinstance(link, Link):
+        raise SmileError(f"{link} is not a link")
+    return link.get(index)
+    
 
 @builtin("function")
 def function_op(
@@ -367,6 +373,13 @@ def function_op(
 ):  # TODO fix parsing issue and catch recursion error
     return UserDefinedOp("u_function", body, operands)
 
+@special("eval") # get final evaluation of evals and store into var, if evals is not link, var is 0
+def eval(var, evals, env):
+    if isinstance(evals, Link):
+        env.define(var, evals.get(len(evals) - 1))
+        return evals.get(len(evals) - 1)
+    env.define(var, 0)
+    return 0
 
 @special("bind")
 def bind(id, val, env):
