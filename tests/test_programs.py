@@ -28,3 +28,12 @@ def test_simple(runner):
     
     assert runner("c") == 3
     assert runner("5 d 5") == 20
+    
+def test_sum_recursive(runner):
+    runner("""
+        func bind ((a link b) function (
+            (a add ((a sub 1) func b)) if (a greater 0)
+        ))       
+    """) # recursively add 1..a
+    
+    assert runner("6 func 5") == 21
